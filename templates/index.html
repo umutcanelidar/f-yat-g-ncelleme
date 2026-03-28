@@ -340,9 +340,16 @@
         resultsHeader.insertAdjacentHTML('afterend', bulkHeader);
         tbody.innerHTML = data.changes.map(row => {
           const diff = row.new_price - row.old_price;
-          const pct = row.old_price !== 0 ? ((diff / row.old_price) * 100).toFixed(1) : '∞';
+          let pct;
+          if (row.old_price !== 0 && !isNaN(row.old_price)) {
+            pct = ((diff / row.old_price) * 100).toFixed(1);
+          } else {
+            pct = "100.0"; // New product or 0 price
+          }
+          
           const cls = diff > 0 ? 'price-up' : 'price-down';
           const arrow = diff > 0 ? '▲' : '▼';
+          
           return `<tr data-sku="${row.sku}" data-price="${row.new_price}">
             <td><input type="checkbox" class="product-check" checked></td>
             <td><code class="sku-code">${row.sku}</code></td>
@@ -350,7 +357,7 @@
             <td><span class="price-old">${formatPrice(row.old_price)}</span></td>
             <td><span class="price-liste">${formatPrice(row.liste_fiyat)}</span></td>
             <td><span class="price-new">${formatPrice(row.new_price)}</span></td>
-            <td><span class="${cls}">${arrow} %${Math.abs(pct)}</span></td>
+            <td><span class="${cls}">${arrow} %${Math.abs(parseFloat(pct))}</span></td>
             <td>
               <button class="btn-update-single" onclick="updateSinglePrice('${row.sku}', ${row.new_price}, this)">
                 Güncelle
