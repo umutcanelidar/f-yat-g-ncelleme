@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fiyat Karşılaştırma Paneli</title>
+  <meta name="description" content="IdeaSoft ve Yaşar Teknik ürün fiyatlarını SKU bazında karşılaştırma paneli">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+  <div class="bg-glow"></div>
+
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-main">
+        <h1>💰 Fiyat Karşılaştırma Paneli</h1>
+        <button class="btn-settings" id="btn-settings" title="Ayarlar">⚙️</button>
+      </div>
+      <p>IdeaSoft ve Yaşar Teknik dosyalarını yükleyin — SKU eşleştirmesi otomatik yapılır</p>
+    </header>
+
+    <!-- Upload Cards -->
+    <div class="upload-grid">
+      <!-- IdeaSoft -->
+      <div class="upload-card" id="dropzone-ideasoft" onclick="document.getElementById('file-ideasoft').click()">
+        <input type="file" id="file-ideasoft" accept=".xlsx,.xls,.csv">
+        <div class="icon">🛒</div>
+        <h3>IdeaSoft Dosyası</h3>
+        <p class="subtitle">Mevcut ürünlerinizin Excel listesi</p>
+        <div class="file-info" id="info-ideasoft">Sürükle-bırak veya tıkla</div>
+      </div>
+
+      <!-- Yaşar Teknik -->
+      <div class="upload-card" id="dropzone-yasar" onclick="document.getElementById('file-yasar').click()">
+        <input type="file" id="file-yasar" accept=".xlsx,.xls,.csv">
+        <div class="icon">🏭</div>
+        <h3>Yaşar Teknik Dosyası</h3>
+        <p class="subtitle">Tedarikçi güncel fiyat listesi</p>
+        <div class="file-info" id="info-yasar">Sürükle-bırak veya tıkla</div>
+      </div>
+    </div>
+
+    <!-- Info Banner -->
+    <div class="info-banner" id="info-banner">
+      <span>🔍</span> SKU / Stok Kodu sütunları otomatik algılanır, fiyat karşılaştırması SKU eşleşmesine göre yapılır.
+    </div>
+
+    <!-- İskonto Ayarı -->
+    <div class="iskonto-section">
+      <div class="iskonto-card">
+        <div class="iskonto-label">
+          <span>🏷️</span>
+          <div>
+            <strong>Bayi İskonto Oranı</strong>
+            <small>Yaşar Teknik liste fiyatına uygulanacak iskonto</small>
+          </div>
+        </div>
+        <div class="iskonto-input-wrap">
+          <span class="iskonto-prefix">%</span>
+          <input type="number" id="iskonto" value="45" min="0" max="100" step="1">
+        </div>
+      </div>
+    </div>
+
+    <!-- Compare Button -->
+    <div class="action-bar">
+      <button class="btn-compare" id="btn-compare" disabled>
+        <span class="spinner"></span>
+        <span class="btn-text">🔍 Karşılaştır</span>
+      </button>
+    </div>
+
+    <!-- Detected Columns Info -->
+    <div class="detected-info" id="detected-info"></div>
+
+    <!-- Progress Bar Section -->
+    <div class="progress-section" id="progress-section">
+      <div class="progress-header">
+        <span id="progress-text">İşlem bekleniyor...</span>
+        <span id="progress-percent">0%</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progress-bar-fill"></div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div class="results-section" id="results-section">
+      <div class="results-header" id="results-header">
+        <h2>📊 Sonuçlar</h2>
+        <a class="btn-download" id="btn-download" href="#">
+          ⬇ İndir (.xlsx)
+        </a>
+      </div>
+
+      <div class="stats-grid" id="stats-grid"></div>
+
+      <div class="results-table-wrap">
+        <table>
+          <thead id="results-thead"></thead>
+          <tbody id="results-tbody"></tbody>
+        </table>
+      </div>
+
+      <!-- Eşleşmeyen IdeaSoft Ürünleri -->
+      <div class="unmatched-section" id="unmatched-ideasoft-section">
+        <div class="unmatched-header" onclick="toggleUnmatched('ideasoft')">
+          <h3>⚠️ Eşleşmeyen IdeaSoft Ürünleri <span class="unmatched-count" id="unmatched-ideasoft-count"></span></h3>
+          <span class="toggle-arrow" id="arrow-ideasoft">▼</span>
+        </div>
+        <div class="unmatched-body" id="unmatched-ideasoft-body">
+          <table>
+            <thead>
+              <tr>
+                <th>SKU</th>
+                <th>Ürün Adı</th>
+                <th>Fiyat</th>
+              </tr>
+            </thead>
+            <tbody id="unmatched-ideasoft-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Live Log Console -->
+      <div class="log-section">
+        <div class="log-header">
+          <h3>🖥️ İşlem Günlüğü</h3>
+          <button class="btn-clear-logs" id="btn-clear-logs">Temizle</button>
+        </div>
+        <div class="log-console" id="log-console">
+          <div class="log-entry system">Sistem hazır. Dosya yükleyip karşılaştırabilirsiniz.</div>
+        </div>
+      </div>
+    </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal" id="settings-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>⚙️ IdeaSoft Ayarları</h3>
+        <button class="close-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>IdeaSoft E-posta</label>
+          <input type="email" id="setting-username" placeholder="ornek@mail.com">
+        </div>
+        <div class="form-group">
+          <label>IdeaSoft Şifre</label>
+          <input type="password" id="setting-password" placeholder="••••••••">
+        </div>
+        <div class="automation-status" id="automation-status">Oturum durumu kontrol ediliyor...</div>
+        <div class="modal-actions">
+          <button class="btn-secondary" id="btn-save-settings">💾 Kaydet</button>
+          <button class="btn-primary" id="btn-manual-login">🔑 Oturum Aç (2FA)</button>
+        </div>
+        <p class="help-text">2FA koruması için bir kez manuel giriş yapmanız yeterlidir. Bot oturumu kaydedecektir.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ========== STATE ==========
+    let ideaSoftFile = null;
+    let yasarFile = null;
+
+    // ========== ELEMENTS ==========
+    const dropIdeasoft = document.getElementById('dropzone-ideasoft');
+    const dropYasar = document.getElementById('dropzone-yasar');
+    const fileIdeasoft = document.getElementById('file-ideasoft');
+    const fileYasar = document.getElementById('file-yasar');
+    const infoIdeasoft = document.getElementById('info-ideasoft');
+    const infoYasar = document.getElementById('info-yasar');
+    const btnCompare = document.getElementById('btn-compare');
+    const resultsSection = document.getElementById('results-section');
+    const resultsHeader = document.getElementById('results-header');
+
+    // ========== DRAG & DROP ==========
+    function setupDropzone(zone, inputEl, onFile) {
+      ['dragenter', 'dragover'].forEach(evt => {
+        zone.addEventListener(evt, e => { e.preventDefault(); zone.classList.add('dragover'); });
+      });
+      ['dragleave', 'drop'].forEach(evt => {
+        zone.addEventListener(evt, e => { e.preventDefault(); zone.classList.remove('dragover'); });
+      });
+      zone.addEventListener('drop', e => {
+        const file = e.dataTransfer.files[0];
+        if (file) onFile(file);
+      });
+      inputEl.addEventListener('change', e => {
+        const file = e.target.files[0];
+        if (file) onFile(file);
+      });
+    }
+
+    setupDropzone(dropIdeasoft, fileIdeasoft, file => {
+      ideaSoftFile = file;
+      infoIdeasoft.textContent = '✅ ' + file.name;
+      infoIdeasoft.classList.add('uploaded');
+      checkReady();
+    });
+
+    setupDropzone(dropYasar, fileYasar, file => {
+      yasarFile = file;
+      infoYasar.textContent = '✅ ' + file.name;
+      infoYasar.classList.add('uploaded');
+      checkReady();
+    });
+
+    function checkReady() {
+      btnCompare.disabled = !(ideaSoftFile && yasarFile);
+    }
+
+    // ========== COMPARE ==========
+    btnCompare.addEventListener('click', async () => {
+      if (!ideaSoftFile || !yasarFile) {
+        showToast('Lütfen her iki dosyayı da yükleyin', 'error');
+        return;
+      }
+
+      btnCompare.classList.add('loading');
+      btnCompare.disabled = true;
+      document.querySelector('.btn-text').textContent = '⏳ Karşılaştırılıyor...';
+
+      const formData = new FormData();
+      formData.append('ideasoft_file', ideaSoftFile);
+      formData.append('yasar_file', yasarFile);
+
+      formData.append('iskonto', document.getElementById('iskonto').value);
+
+      try {
+        const res = await fetch('/compare', { method: 'POST', body: formData });
+        const data = await res.json();
+
+        if (data.error) {
+          showToast(data.error, 'error');
+          return;
+        }
+
+        renderResults(data);
+        showToast('Karşılaştırma tamamlandı!', 'success');
+      } catch (err) {
+        showToast('Hata: ' + err.message, 'error');
+      } finally {
+        btnCompare.classList.remove('loading');
+        btnCompare.disabled = false;
+        document.querySelector('.btn-text').textContent = '🔍 Karşılaştır';
+      }
+    });
+
+    // ========== RENDER RESULTS ==========
+    function renderResults(data) {
+      resultsSection.classList.add('visible');
+
+      // Show detected columns + iskonto info
+      const detectedInfo = document.getElementById('detected-info');
+      detectedInfo.innerHTML = `
+        <div class="detected-card">
+          <span class="detected-label">🛒 IdeaSoft</span>
+          <span>SKU: <strong>${data.sku_col_idea}</strong></span>
+          <span>Fiyat: <strong>${data.price_col_idea}</strong></span>
+        </div>
+        <div class="detected-card">
+          <span class="detected-label">🏭 Yaşar Teknik</span>
+          <span>SKU: <strong>${data.sku_col_yasar}</strong></span>
+          <span>Fiyat: <strong>${data.price_col_yasar}</strong></span>
+          <span>🏷️ İskonto: <strong>%${data.iskonto}</strong></span>
+        </div>
+      `;
+      detectedInfo.classList.add('visible');
+
+      // Stats
+      const statsGrid = document.getElementById('stats-grid');
+      statsGrid.innerHTML = `
+        <div class="stat-card info">
+          <div class="stat-value">${data.total_ideasoft}</div>
+          <div class="stat-label">IdeaSoft Ürün</div>
+        </div>
+        <div class="stat-card info">
+          <div class="stat-value">${data.total_yasar}</div>
+          <div class="stat-label">Yaşar Teknik Ürün</div>
+        </div>
+        <div class="stat-card success">
+          <div class="stat-value">${data.total_matched}</div>
+          <div class="stat-label">SKU Eşleşen</div>
+        </div>
+        <div class="stat-card highlight">
+          <div class="stat-value">${data.price_changed}</div>
+          <div class="stat-label">Fiyat Değişen</div>
+        </div>
+        <div class="stat-card warning">
+          <div class="stat-value">${data.not_matched_ideasoft}</div>
+          <div class="stat-label">Eşleşmeyen (IdeaSoft)</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">${data.not_matched_yasar}</div>
+          <div class="stat-label">Eşleşmeyen (Yaşar)</div>
+        </div>
+      `;
+
+      // Table
+      const thead = document.getElementById('results-thead');
+      const tbody = document.getElementById('results-tbody');
+      const hasChanges = data.changes && data.changes.length > 0;
+
+      const bulkHeader = hasChanges ? `
+        <div class="bulk-actions">
+          <button class="btn-bulk-update" id="btn-bulk-update">
+            ⚡ Seçili Olanları IdeaSoft'ta Güncelle
+          </button>
+        </div>
+      ` : '';
+
+      thead.innerHTML = `<tr>
+        <th style="width:40px"><input type="checkbox" id="check-all" checked></th>
+        <th>SKU</th>
+        <th>Ürün</th>
+        <th>Mevcut Fiyat</th>
+        <th>Liste Fiyat</th>
+        <th>Bayi Fiyat (%${100 - data.iskonto})</th>
+        <th>Fark</th>
+        <th>İşlem</th>
+      </tr>`;
+
+      if (!hasChanges) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:32px; color:var(--text-muted);">Fiyat değişikliği bulunamadı 🎉</td></tr>';
+      } else {
+        resultsHeader.insertAdjacentHTML('afterend', bulkHeader);
+        tbody.innerHTML = data.changes.map(row => {
+          const diff = row.new_price - row.old_price;
+          const pct = row.old_price !== 0 ? ((diff / row.old_price) * 100).toFixed(1) : '∞';
+          const cls = diff > 0 ? 'price-up' : 'price-down';
+          const arrow = diff > 0 ? '▲' : '▼';
+          return `<tr data-sku="${row.sku}" data-price="${row.new_price}">
+            <td><input type="checkbox" class="product-check" checked></td>
+            <td><code class="sku-code">${row.sku}</code></td>
+            <td>${row.product_name}</td>
+            <td><span class="price-old">${formatPrice(row.old_price)}</span></td>
+            <td><span class="price-liste">${formatPrice(row.liste_fiyat)}</span></td>
+            <td><span class="price-new">${formatPrice(row.new_price)}</span></td>
+            <td><span class="${cls}">${arrow} %${Math.abs(pct)}</span></td>
+            <td>
+              <button class="btn-update-single" onclick="updateSinglePrice('${row.sku}', ${row.new_price}, this)">
+                Güncelle
+              </button>
+            </td>
+          </tr>`;
+        }).join('');
+
+        // Check all functionality
+        document.getElementById('check-all').addEventListener('change', function () {
+          document.querySelectorAll('.product-check').forEach(cb => cb.checked = this.checked);
+        });
+
+        document.getElementById('btn-bulk-update').onclick = bulkUpdate;
+        addLog("Karşılaştırma bitti. Güncellenecek " + data.price_changed + " ürün listelendi.", "info");
+      }
+      // Download
+      document.getElementById('btn-download').href = '/download/' + data.filename;
+
+      // Eşleşmeyen ürünleri render et
+      renderUnmatched(data);
+
+      resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // ========== AUTOMATION JS ==========
+    const settingsModal = document.getElementById('settings-modal');
+    const btnSettings = document.getElementById('btn-settings');
+    const btnSaveSettings = document.getElementById('btn-save-settings');
+    const btnManualLogin = document.getElementById('btn-manual-login');
+    const closeModal = document.querySelector('.close-modal');
+
+    async function loadSettings() {
+      try {
+        const res = await fetch('/api/settings');
+        const data = await res.json();
+        document.getElementById('setting-username').value = data.username || '';
+        document.getElementById('setting-password').value = data.password || '';
+      } catch (e) { }
+    }
+    loadSettings();
+
+    btnSettings.onclick = () => settingsModal.style.display = 'flex';
+    closeModal.onclick = () => settingsModal.style.display = 'none';
+    window.onclick = (e) => { if (e.target == settingsModal) settingsModal.style.display = 'none'; };
+
+    btnSaveSettings.onclick = async () => {
+      const username = document.getElementById('setting-username').value;
+      const password = document.getElementById('setting-password').value;
+      await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      showToast('Ayarlar kaydedildi.', 'success');
+    };
+
+    btnManualLogin.onclick = async () => {
+      btnManualLogin.disabled = true;
+      btnManualLogin.textContent = '⏳ Bekleniyor...';
+      const status = document.getElementById('automation-status');
+      status.textContent = 'Tarayıcı açılıyor, lütfen giriş yapın...';
+
+      try {
+        const res = await fetch('/api/login', { method: 'POST' });
+        const data = await res.json();
+        if (data.status === 'success') {
+          showToast(data.message, 'success');
+          status.textContent = '✅ Oturum aktif.';
+        } else {
+          showToast(data.error, 'error');
+          status.textContent = '❌ Giriş başarısız.';
+        }
+      } catch (e) {
+        showToast('Hata oluştu.', 'error');
+      } finally {
+        btnManualLogin.disabled = false;
+        btnManualLogin.textContent = '🔑 Oturum Aç (2FA)';
+      }
+    };
+
+    async function updateSinglePrice(sku, price, btn) {
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = '...';
+      }
+      addLog(`Güncelleniyor: ${sku} -> ${price} ₺`, "process");
+      try {
+        const res = await fetch('/api/update-price', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sku, price })
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+          if (btn) {
+            btn.textContent = '✅';
+            btn.style.backgroundColor = 'var(--success)';
+            btn.closest('tr').classList.add('updated-success');
+          }
+          addLog(`✅ Başarılı: ${sku}`, "success");
+          return true;
+        } else {
+          if (btn) {
+            btn.textContent = '❌';
+            btn.closest('tr').classList.add('updated-error');
+          }
+          addLog(`❌ Hata (${sku}): ${data.error}`, "error");
+          return false;
+        }
+      } catch (e) {
+        if (btn) btn.textContent = '❌';
+        addLog(`❌ Hata (${sku}): Sunucuya ulaşılamadı.`, "error");
+        return false;
+      }
+    }
+
+    async function bulkUpdate() {
+      const rows = document.querySelectorAll('#results-tbody tr');
+      const toUpdate = [];
+      rows.forEach(row => {
+        if (row.querySelector('.product-check').checked) {
+          toUpdate.push({
+            sku: row.getAttribute('data-sku'),
+            price: row.getAttribute('data-price'),
+            btn: row.querySelector('.btn-update-single')
+          });
+        }
+      });
+
+      if (toUpdate.length === 0) {
+        showToast('Seçili ürün yok.', 'warning');
+        return;
+      }
+
+      if (!confirm(`${toUpdate.length} ürün IdeaSoft'ta güncellenecek. Hazır mısın?`)) return;
+
+      const bulkBtn = document.getElementById('btn-bulk-update');
+      bulkBtn.disabled = true;
+      
+      const progressSection = document.getElementById('progress-section');
+      const progressFill = document.getElementById('progress-bar-fill');
+      const progressText = document.getElementById('progress-text');
+      const progressPercent = document.getElementById('progress-percent');
+      
+      progressSection.classList.add('visible');
+      addLog(`🚀 Toplu güncelleme başladı: ${toUpdate.length} ürün.`, "info");
+
+      let count = 0;
+      for (const item of toUpdate) {
+        count++;
+        const percent = Math.round((count / toUpdate.length) * 100);
+        progressFill.style.width = percent + '%';
+        progressPercent.textContent = percent + '%';
+        progressText.textContent = `Güncelleniyor: ${item.sku} (${count}/${toUpdate.length})`;
+        
+        await updateSinglePrice(item.sku, item.price, item.btn);
+      }
+
+      bulkBtn.disabled = false;
+      bulkBtn.textContent = '⚡ Toplu Güncelleme Tamamlandı';
+      progressText.textContent = '✅ İşlem tamamlandı.';
+      addLog(`🏁 Toplu güncelleme bitti. ${count} ürün işlendi.`, "info");
+      showToast('Toplu güncelleme tamamlandı.', 'success');
+    }
+
+    // ========== LOGS ==========
+    const logConsole = document.getElementById('log-console');
+    const btnClearLogs = document.getElementById('btn-clear-logs');
+
+    function addLog(msg, type = 'info') {
+      const time = new Date().toLocaleTimeString('tr-TR');
+      const div = document.createElement('div');
+      div.className = `log-entry ${type}`;
+      div.innerHTML = `<span class="log-time">[${time}]</span> ${msg}`;
+      logConsole.appendChild(div);
+      logConsole.scrollTop = logConsole.scrollHeight;
+    }
+
+    btnClearLogs.onclick = () => {
+      logConsole.innerHTML = '<div class="log-entry system">Log geçmişi temizlendi.</div>';
+    };
+
+    // SSE for backend logs
+    const eventSource = new EventSource('/api/logs');
+    eventSource.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      addLog(data.message, data.level);
+    };
+    eventSource.onerror = (e) => {
+      console.error("SSE Error:", e);
+      // Wait and reconnect? Or just fail silently for local dev.
+    };
+
+    function renderUnmatched(data) {
+      // IdeaSoft eşleşmeyenler
+      const ideaSection = document.getElementById('unmatched-ideasoft-section');
+      const ideaCount = document.getElementById('unmatched-ideasoft-count');
+      const ideaTbody = document.getElementById('unmatched-ideasoft-tbody');
+
+      if (data.unmatched_ideasoft.length > 0) {
+        ideaSection.style.display = 'block';
+        ideaCount.textContent = `(${data.unmatched_ideasoft.length})`;
+        ideaTbody.innerHTML = data.unmatched_ideasoft.map(row => `<tr>
+          <td><code class="sku-code">${row.sku}</code></td>
+          <td>${row.product_name || '-'}</td>
+          <td>${formatPrice(row.price)}</td>
+        </tr>`).join('');
+      } else {
+        ideaSection.style.display = 'none';
+      }
+    }
+
+    function toggleUnmatched(type) {
+      const body = document.getElementById('unmatched-' + type + '-body');
+      const arrow = document.getElementById('arrow-' + type);
+      body.classList.toggle('open');
+      arrow.textContent = body.classList.contains('open') ? '▲' : '▼';
+    }
+
+    function formatPrice(val) {
+      return Number(val).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺';
+    }
+
+    // ========== TOAST ==========
+    function showToast(msg, type) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.className = 'toast ' + type + ' show';
+      setTimeout(() => toast.classList.remove('show'), 4000);
+    }
+  </script>
+</body>
+
+</html>
