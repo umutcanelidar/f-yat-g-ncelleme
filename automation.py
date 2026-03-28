@@ -241,32 +241,39 @@ class IdeasoftBot:
             search_box.send_keys(sku)
             search_box.send_keys(Keys.RETURN)
             
-            # Wait for search results to load
+            # Wait for search results
             self.log(f"Sonuçlar bekleniyor ({sku})...", "info")
-            time.sleep(5)
+            time.sleep(2) # Back to faster speed
             
-            # 2. Find and click Edit Link ONLY IF it's the correct product
+            # 2. Strict SKU Matching - Ensure we are clicking the right product row
             try:
-                # We search for the edit link specifically in a row that contains the SKU text
-                # This prevents clicking on the wrong product if search hasn't finished
-                xpath_selector = f"//tr[contains(., '{sku}')]//a[contains(@href, '/panel/products/edit/')]"
+                # Get all table rows that could be product results
+                rows = self.driver.find_elements(By.CSS_SELECTOR, "table tr, .product-list-row")
                 
-                try:
-                    edit_link = self.wait.until(EC.presence_of_element_located((By.XPATH, xpath_selector)))
-                except:
-                    # Fallback to general edit link but with a warning check
-                    self.log("SKU bazlı link bulunamadı, genel link deneniyor...", "warning")
-                    edit_link = self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "a[href*='/panel/products/edit/']")))
-                    
-                self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", edit_link)
-                time.sleep(1)
-                self.driver.execute_script("arguments[0].click();", edit_link) # Safe JS click
+                target_edit_link = None
+                for row in rows:
+                    if sku in row.text:
+                        # Find the edit link within THIS specific row
+                        try:
+                            target_edit_link = row.find_element(By.CSS_SELECTOR, "a[href*='/panel/products/edit/']")
+                            if target_edit_link:
+                                break
+                        except:
+                            continue
+                
+                if not target_edit_link:
+                    # Fallback if specific row not identified but results are few
+                    self.log(f"Satır bazlı eşleşme bulunamadı, genel kontrol yapılıyor...", "warning")
+                    target_edit_link = self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "a[href*='/panel/products/edit/']")))
+
+                self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", target_edit_link)
+                self.driver.execute_script("arguments[0].click();", target_edit_link) # FAST JS click
             except Exception as e:
-                return False, f"Ürün düzenleme linki bulunamadı veya SKU eşleşmedi (SKU: {sku})"
+                return False, f"Hata: SKU eşleşen ürün bulunamadı veya tıklanamadı ({sku})"
 
             # 3. Update Price 1
             self.log(f"Fiyat alanı aranıyor (Fiyat 1)...", "info")
-            time.sleep(4) 
+            time.sleep(2) 
             
             # DISMISS BANNERS AGAIN (in case they re-appear on new page)
             self.driver.execute_script("document.querySelectorAll('.modal-backdrop, .modal, [class*=\"banner\"]' ).forEach(el => el.remove());")
@@ -340,7 +347,7 @@ class IdeasoftBot:
                 self.driver.execute_script("arguments[0].click();", save_btn)
                 
                 # Wait for any success message or redirect
-                time.sleep(3)
+                time.sleep(2)
                 
                 self.log(f"Başarıyla güncellendi: {sku}", "success")
                 return True, "Başarılı"
