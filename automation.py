@@ -241,16 +241,28 @@ class IdeasoftBot:
             search_box.send_keys(sku)
             search_box.send_keys(Keys.RETURN)
             
-            time.sleep(4)
+            # Wait for search results to load
+            self.log(f"Sonuçlar bekleniyor ({sku})...", "info")
+            time.sleep(5)
             
-            # 2. Find and click Edit Link
+            # 2. Find and click Edit Link ONLY IF it's the correct product
             try:
-                edit_link = self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "a[href*='/panel/products/edit/']")))
+                # We search for the edit link specifically in a row that contains the SKU text
+                # This prevents clicking on the wrong product if search hasn't finished
+                xpath_selector = f"//tr[contains(., '{sku}')]//a[contains(@href, '/panel/products/edit/')]"
+                
+                try:
+                    edit_link = self.wait.until(EC.presence_of_element_located((By.XPATH, xpath_selector)))
+                except:
+                    # Fallback to general edit link but with a warning check
+                    self.log("SKU bazlı link bulunamadı, genel link deneniyor...", "warning")
+                    edit_link = self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "a[href*='/panel/products/edit/']")))
+                    
                 self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", edit_link)
                 time.sleep(1)
                 self.driver.execute_script("arguments[0].click();", edit_link) # Safe JS click
             except Exception as e:
-                return False, f"Ürün düzenleme linki bulunamadı (SKU: {sku})"
+                return False, f"Ürün düzenleme linki bulunamadı veya SKU eşleşmedi (SKU: {sku})"
 
             # 3. Update Price 1
             self.log(f"Fiyat alanı aranıyor (Fiyat 1)...", "info")
